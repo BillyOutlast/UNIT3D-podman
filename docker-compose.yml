@@ -34,6 +34,7 @@ services:
         volumes:
             - './UNIT3D:/var/www/html'
             - ./entrypoint.sh:/entrypoint.sh
+            - ./home:/home/unit3d/
         entrypoint: /entrypoint.sh
         networks:
             - unit3d
@@ -99,6 +100,8 @@ services:
         image: 'getmeili/meilisearch:latest'
         ports:
             - '${FORWARD_MEILISEARCH_PORT:-7700}:7700'
+        expose:
+            - "7700"
         environment:
             MEILI_NO_ANALYTICS: '${MEILISEARCH_NO_ANALYTICS:-false}'
         volumes:

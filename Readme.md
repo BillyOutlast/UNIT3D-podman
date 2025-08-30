@@ -73,6 +73,19 @@ After cloning the repository, copy the example environment file:
 cp .env.example .env
 ```
 
+## 11.1. Configure Environment Variables
+
+Edit the `.env` file to set the following values for Meilisearch, MariaDB, and Redis:
+
+```env
+MEILISEARCH_HOST=http://meilisearch:7700
+DB_CONNECTION=mariadb
+DB_HOST=mariadb
+REDIS_HOST=redis
+```
+
+You can use your preferred text editor to update these lines in the `.env` file.
+
 ## 12. Install Dependencies with Composer
 
 Run the following commands inside the UNIT3D directory to install and update PHP dependencies:
@@ -92,16 +105,9 @@ php artisan key:generate
 
 This command sets the `APP_KEY` value in your `.env` file, which is required for application security.
 
-## 14. Run Database Migrations and Seed Data
-
-To set up the database schema and seed initial data, run:
-
-```sh
-php artisan migrate:fresh --seed
-```
 
 
-## 15. Install Bun
+## 14. Install Bun
 
 If you want to use Bun for managing Node.js dependencies and building assets outside the Docker environment, install Bun globally:
 
@@ -111,7 +117,7 @@ curl -fsSL https://bun.sh/install | bash
 
 After installation, restart your terminal or add Bun to your PATH as instructed by the installer.
 p
-## 16. Manage Node.js Dependencies and Compile Assets
+## 15. Manage Node.js Dependencies and Compile Assets
 
 To install Node.js dependencies and build frontend assets within the Docker environment, run:
 
@@ -130,7 +136,7 @@ rm -rf node_modules && bun pm cache rm && bun install && bun run build
 ```
 
 
-## 17 Configure Unprivileged Ports
+## 16 Configure Unprivileged Ports
 
 To allow non-root processes to bind to ports 80 and 443, add the following lines to `/etc/sysctl.conf`:
 
@@ -144,7 +150,7 @@ Apply the changes with:
 sudo sysctl -p
 ```
 
-## 178 Start the Application with Podman Compose
+## 17. Start the Application with Podman Compose
 
 Navigate to the parent directory and start the containers using your environment file:
 
@@ -152,3 +158,35 @@ Navigate to the parent directory and start the containers using your environment
 cd ..
 podman-compose --env-file UNIT3D/.env up -d
 ```
+
+
+
+## 18. Run Database Migrations and Seed Data
+
+To set up the database schema and seed initial data, run:
+
+podman exec -it unit3d-podman_unit3d_1 bash
+cd /var/www/html
+php artisan migrate:fresh --seed
+```
+
+## 18.1. Restart Containers with Force
+
+If you need to recreate containers and start them in detached mode, use:
+
+```sh
+podman compose up -d --force
+```
+
+This command will force recreation of containers, ensuring any changes to your configuration or images are applied.
+
+
+## 19. Clear Laravel Configuration Cache
+
+If you encounter SQL errors due to missing or incorrect database credentials, clear the Laravel configuration cache:
+
+```sh
+php artisan config:clear
+```
+
+This command reloads the configuration from your `.env` file and can resolve issues related to environment variables.
