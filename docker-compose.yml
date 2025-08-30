@@ -1,0 +1,116 @@
+# cspell:ignore initdb,meili,mysqladmin,mysqld,wwwgroup,wwwuser
+services:
+    nginx:
+        image: 'nginx:latest'
+        ports:
+            - '${HTTP_PORT:-8000}:80'
+            - '${SSL_PORT:-443}:443'
+        environment:
+            - SSL_PORT=${SSL_PORT:-443}
+            - SERVER_NAME=${SERVER_NAME:-localhost}
+            - SSL_DOMAIN=${SSL_DOMAIN:-localhost}
+            - SSL_ALT_NAME=${SSL_ALT_NAME:-DNS:localhost}
+        volumes:
+            - './nginx/certs:/etc/nginx/certs'
+            - './vendor/ryoluo/sail-ssl/nginx/templates:/etc/nginx/templates'
+            - './vendor/ryoluo/sail-ssl/nginx/generate-ssl-cert.sh:/docker-entrypoint.d/99-generate-ssl-cert.sh'
+        depends_on:
+            - unit3d
+        networks:
+            - unit3d
+        security_opt:
+           - "label=disable"
+    unit3d:
+        build:
+            context: .
+            dockerfile: Dockerfile
+            args:
+        image: unit3d/app
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        ports:
+            - '${APP_PORT:-8080}:8080'
+            - '${VITE_PORT:-5173}:${VITE_PORT:-5173}'
+        volumes:
+            - './UNIT3D:/var/www/html'
+            - ./entrypoint.sh:/entrypoint.sh
+        entrypoint: /entrypoint.sh
+        networks:
+            - unit3d
+        depends_on:
+            - meilisearch
+            - mariadb
+            - redis
+        security_opt:
+           - "label=disable"
+    mariadb:
+      image: 'mariadb:latest'
+      ports:
+        - '${FORWARD_DB_PORT:-3306}:3306'
+      environment:
+        MARIADB_ROOT_PASSWORD: '${DB_PASSWORD}'
+        MARIADB_ROOT_HOST: '%'
+        MARIADB_DATABASE: '${DB_DATABASE}'
+        MARIADB_USER: '${DB_USERNAME}'
+        MARIADB_PASSWORD: '${DB_PASSWORD}'
+        MARIADB_ALLOW_EMPTY_PASSWORD: 1
+      volumes:
+        - './mariadb:/var/lib/mysql'
+        - './vendor/laravel/sail/database/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
+      networks:
+        - unit3d
+      healthcheck:
+        test:
+          - CMD
+          - mariadb-admin
+          - ping
+          - '-p${DB_PASSWORD}'
+        retries: 3
+        timeout: 5s
+      security_opt:
+           - "label=disable"
+    redis:
+        image: 'redis:alpine'
+        ports:
+            - '${FORWARD_REDIS_PORT:-6379}:6379'
+        volumes:
+            - './redis:/data'
+        networks:
+            - unit3d
+        healthcheck:
+            test:
+                - CMD
+                - redis-cli
+                - ping
+            retries: 3
+            timeout: 5s
+        security_opt:
+           - "label=disable"
+    mailpit:
+        image: 'axllent/mailpit:latest'
+        ports:
+            - '${FORWARD_MAILPIT_PORT:-1025}:1025'
+            - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
+        networks:
+            - unit3d
+        security_opt:
+           - "label=disable"
+    meilisearch:
+        image: 'getmeili/meilisearch:latest'
+        ports:
+            - '${FORWARD_MEILISEARCH_PORT:-7700}:7700'
+        environment:
+            MEILI_NO_ANALYTICS: '${MEILISEARCH_NO_ANALYTICS:-false}'
+        volumes:
+            - './meili_data:/meili_data'
+        networks:
+            - unit3d
+        healthcheck:
+            test: [ "CMD", "wget", "--no-verbose", "--spider",  "http://localhost:7700/health" ]
+            retries: 3
+            timeout: 5s
+        security_opt:
+           - "label=disable"
+networks:
+    unit3d:
+        driver: bridge
